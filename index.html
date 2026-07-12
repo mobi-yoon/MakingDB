@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MakingDB</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header>
+  <h1>MakingDB</h1>
+  <p class="sub">제작법 · 스크롤 조회 (편집은 로컬 CLI에서)</p>
+</header>
+
+<nav id="tabs">
+  <button class="tab-btn active" data-tab="find-product">완제품 검색</button>
+  <button class="tab-btn" data-tab="find-material">재료 역검색</button>
+  <button class="tab-btn" data-tab="breakdown">필요 재료 계산</button>
+  <button class="tab-btn" data-tab="scroll-calc">스크롤 계산</button>
+  <button class="tab-btn" data-tab="lists">전체 목록</button>
+</nav>
+
+<main>
+  <section id="find-product" class="tab-panel active">
+    <h2>완제품 이름으로 재료 찾기</h2>
+    <input type="text" id="fp-input" list="fp-datalist" placeholder="완제품 이름">
+    <datalist id="fp-datalist"></datalist>
+    <div id="fp-result" class="result"></div>
+  </section>
+
+  <section id="find-material" class="tab-panel">
+    <h2>재료로 완제품 역산</h2>
+    <input type="text" id="fm-input" list="fm-datalist" placeholder="재료 이름">
+    <datalist id="fm-datalist"></datalist>
+    <div id="fm-result" class="result"></div>
+  </section>
+
+  <section id="breakdown" class="tab-panel">
+    <h2>완제품 n개 제작 시 필요 재료</h2>
+    <input type="text" id="bd-name" list="bd-datalist" placeholder="완제품 이름">
+    <datalist id="bd-datalist"></datalist>
+    <input type="number" id="bd-qty" placeholder="개수" min="1" value="1">
+    <button id="bd-run">계산</button>
+    <div id="bd-result" class="result"></div>
+  </section>
+
+  <section id="scroll-calc" class="tab-panel">
+    <h2>스크롤 n장 필요 재료</h2>
+    <select id="sc-select"></select>
+    <input type="number" id="sc-qty" placeholder="장수" min="1" value="1">
+    <button id="sc-run">계산</button>
+    <div id="sc-result" class="result"></div>
+  </section>
+
+  <section id="lists" class="tab-panel">
+    <h2>전체 목록</h2>
+    <div id="list-tabs">
+      <button class="list-tab-btn active" data-list="recipes">제작법</button>
+      <button class="list-tab-btn" data-list="scrolls">스크롤</button>
+      <button class="list-tab-btn" data-list="materials">원재료</button>
+    </div>
+    <input type="text" id="list-filter" placeholder="필터...">
+    <div id="list-result" class="result"></div>
+  </section>
+</main>
+
+<footer>
+  <span id="status"></span>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>

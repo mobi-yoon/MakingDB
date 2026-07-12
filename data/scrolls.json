@@ -1,0 +1,212 @@
+[
+  {
+    "scroll_type": "제작",
+    "town": "던바튼",
+    "target_name": "로터스 힐링 완드",
+    "qty_per_scroll": 2
+  },
+  {
+    "scroll_type": "요리",
+    "town": "이멘마하",
+    "target_name": "마요네즈 고기볶음",
+    "qty_per_scroll": 5
+  },
+  {
+    "scroll_type": "채집",
+    "town": "이멘마하",
+    "target_name": "쌀",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "채집",
+    "town": "이멘마하",
+    "target_name": "호박",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "요리",
+    "town": "콜헨",
+    "target_name": "조개찜",
+    "qty_per_scroll": 5
+  },
+  {
+    "scroll_type": "채집",
+    "town": "콜헨",
+    "target_name": "화살꽃",
+    "qty_per_scroll": 20
+  },
+  {
+    "scroll_type": "채집",
+    "town": "콜헨",
+    "target_name": "달걀",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "채집",
+    "town": "콜헨",
+    "target_name": "상급 통나무+",
+    "qty_per_scroll": 20
+  },
+  {
+    "scroll_type": "채집",
+    "town": "콜헨",
+    "target_name": "조개",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "제작",
+    "town": "콜헨",
+    "target_name": "사슬 갑옷 신발",
+    "qty_per_scroll": 2
+  },
+  {
+    "scroll_type": "제작",
+    "town": "콜헨",
+    "target_name": "두꺼운 가죽 갑옷 신발",
+    "qty_per_scroll": 2
+  },
+  {
+    "scroll_type": "요리",
+    "town": "티르코네일",
+    "target_name": "달걀 프라이",
+    "qty_per_scroll": 5
+  },
+  {
+    "scroll_type": "채집",
+    "town": "티르코네일",
+    "target_name": "거미줄",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "채집",
+    "town": "티르코네일",
+    "target_name": "양털",
+    "qty_per_scroll": 20
+  },
+  {
+    "scroll_type": "채집",
+    "town": "티르코네일",
+    "target_name": "블러디 허브",
+    "qty_per_scroll": 20
+  },
+  {
+    "scroll_type": "채집",
+    "town": "티르코네일",
+    "target_name": "밀",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "제작",
+    "town": "티르코네일",
+    "target_name": "전문 캠프파이어 키트",
+    "qty_per_scroll": 3
+  },
+  {
+    "scroll_type": "제작",
+    "town": "티르코네일",
+    "target_name": "마법 유탄 부품",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "요리",
+    "town": "던바튼",
+    "target_name": "사과 주스",
+    "qty_per_scroll": 5
+  },
+  {
+    "scroll_type": "채집",
+    "town": "던바튼",
+    "target_name": "쑥쑥 버섯",
+    "qty_per_scroll": 20
+  },
+  {
+    "scroll_type": "채집",
+    "town": "던바튼",
+    "target_name": "우유",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "채광",
+    "town": "던바튼",
+    "target_name": "철 광석",
+    "qty_per_scroll": 20
+  },
+  {
+    "scroll_type": "채집",
+    "town": "던바튼",
+    "target_name": "옥수수",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "채집",
+    "town": "던바튼",
+    "target_name": "양파",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "제작",
+    "town": "던바튼",
+    "target_name": "크레센트 엣지소드",
+    "qty_per_scroll": 2
+  },
+  {
+    "scroll_type": "제작",
+    "town": "던바튼",
+    "target_name": "그랜드 크로스보우",
+    "qty_per_scroll": 2
+  },
+  {
+    "scroll_type": "채집",
+    "town": "반호르",
+    "target_name": "콩",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "채집",
+    "town": "반호르",
+    "target_name": "파스닙",
+    "qty_per_scroll": 10
+  },
+  {
+    "scroll_type": "요리",
+    "town": "반호르",
+    "target_name": "통감자구이",
+    "qty_per_scroll": 5
+  },
+  {
+    "scroll_type": "제작",
+    "town": "반호르",
+    "target_name": "론 엣지소드S",
+    "qty_per_scroll": 2
+  },
+  {
+    "scroll_type": "제작",
+    "town": "반호르",
+    "target_name": "라이트 크로스보우S",
+    "qty_per_scroll": 2
+  },
+  {
+    "scroll_type": "제작",
+    "town": "반호르",
+    "target_name": "마블 힐링 완드S",
+    "qty_per_scroll": 2
+  },
+  {
+    "scroll_type": "제작",
+    "town": "이멘마하",
+    "target_name": "비늘 갑옷 신발S",
+    "qty_per_scroll": 2
+  },
+  {
+    "scroll_type": "제작",
+    "town": "이멘마하",
+    "target_name": "가죽 갑옷 신발S",
+    "qty_per_scroll": 2
+  },
+  {
+    "scroll_type": "제작",
+    "town": "이멘마하",
+    "target_name": "전투복 신발S",
+    "qty_per_scroll": 2
+  }
+]
