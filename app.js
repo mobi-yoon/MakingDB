@@ -340,17 +340,19 @@ function renderList() {
           return `<tr>
               <td>${r.major_category}</td>
               <td>${r.sub_category || "-"}</td>
-              <td>${r.name} (${r.output_qty}개)</td>
+              <td>${r.name}</td>
+              <td>${r.output_qty}개</td>
               <td>${matText}</td>
             </tr>`;
         }).join("")
-      : `<tr><td colspan="4">없음</td></tr>`;
+      : `<tr><td colspan="5">없음</td></tr>`;
 
     result.innerHTML = `<div class="table-wrap"><table class="data-table">
         <thead><tr>
           <th>대분류${headerFilterSelect("major_category", majors, f.major_category)}</th>
           <th>소분류${headerFilterSelect("sub_category", subs, f.sub_category)}</th>
-          <th>이름 (산출)</th>
+          <th>이름</th>
+          <th>산출</th>
           <th>재료</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
