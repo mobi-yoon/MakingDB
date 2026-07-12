@@ -181,11 +181,11 @@ function setupBreakdown() {
     }
 
     const { processed, raw } = summarizeRequirements(tree);
-    result.innerHTML = renderRequirements(name, qty, processed, raw);
+    result.innerHTML = renderRequirements(name, qty, processed, raw, tree);
   });
 }
 
-function renderRequirements(name, qty, processed, raw) {
+function renderRequirements(name, qty, processed, raw, tree) {
   const processedEntries = Object.entries(processed);
   const rawEntries = Object.entries(raw);
 
@@ -200,10 +200,29 @@ function renderRequirements(name, qty, processed, raw) {
     ? "<ul>" + rawEntries.map(([n, q]) => `<li>${n}: ${q}개</li>`).join("") + "</ul>"
     : "<p>없음</p>";
 
+  const treeHtml = tree.children.length
+    ? `<div class="tree">${renderTree(tree)}</div>`
+    : "<p>없음</p>";
+
   return `
     <p><strong>${name}</strong> ${qty}개 제작 시 필요</p>
     <h4>가공품</h4>${processedHtml}
-    <h4>원재료</h4>${rawHtml}`;
+    <h4>원재료</h4>${rawHtml}
+    <h4>제작 트리</h4>${treeHtml}`;
+}
+
+// 어떤 재료가 무엇을 만드는 데 쓰이는지 계층으로 보여주는 트리 (루트 자신은 표시하지 않음)
+function renderTree(tree) {
+  return tree.children.map(child => renderTreeNode(child, 0)).join("");
+}
+
+function renderTreeNode(node, depth) {
+  const overage = !node.isRaw && node.produced !== node.qty ? ` → ${node.produced}개 생산` : "";
+  const craftsInfo = node.isRaw ? "" : ` (제작 ${node.crafts}회${overage})`;
+  const marker = node.isRaw ? "·" : "▸";
+  const row = `<div class="tree-row" style="padding-left:${depth * 1.1}rem">${marker} ${node.name} x${node.qty}${craftsInfo}</div>`;
+  const childrenHtml = node.children.map(child => renderTreeNode(child, depth + 1)).join("");
+  return row + childrenHtml;
 }
 
 // ---------- 4. 스크롤 계산 ----------
@@ -237,7 +256,7 @@ function setupScrollCalc() {
 
     const { processed, raw } = summarizeRequirements(tree);
     const header = `<p>'${scroll.scroll_type} 스크롤: ${scroll.target_name}' ${n}장 -> ${scroll.target_name} ${totalQty}개 필요</p>`;
-    result.innerHTML = header + renderRequirements(scroll.target_name, totalQty, processed, raw).replace(/<p><strong>.*?<\/p>/, "");
+    result.innerHTML = header + renderRequirements(scroll.target_name, totalQty, processed, raw, tree).replace(/<p><strong>.*?<\/p>/, "");
   });
 }
 

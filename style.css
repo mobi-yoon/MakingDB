@@ -119,3 +119,6 @@ button.danger { background: #b91c1c; border-color: #b91c1c; }
 
 .result.error { color: #b91c1c; }
 .result.success { color: #16a34a; }
+
+.tree { font-size: 0.9rem; }
+.tree-row { padding: 0.1rem 0; }
