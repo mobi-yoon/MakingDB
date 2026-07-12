@@ -1,3 +1,7 @@
+const SUPABASE_URL = "https://ytnbvlaryswpthwqqdkd.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inl0bmJ2bGFyeXN3cHRod3FxZGtkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM4MjQxNzMsImV4cCI6MjA5OTQwMDE3M30.bHHCMasS5LMu_lcNw1noW_oyqFz__f-fZmS40-dPgYs";
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 let recipes = [];
 let scrolls = [];
 let materials = [];
@@ -5,14 +9,17 @@ let byName = {};
 let byMaterial = {};
 
 async function loadData() {
-  const [r, s, m] = await Promise.all([
-    fetch("data/recipes.json").then(res => res.json()),
-    fetch("data/scrolls.json").then(res => res.json()),
-    fetch("data/materials.json").then(res => res.json()),
+  const [rr, sr, mr] = await Promise.all([
+    supabaseClient.from("recipes").select("*").order("name"),
+    supabaseClient.from("scrolls").select("*").order("scroll_type"),
+    supabaseClient.from("materials").select("*").order("name"),
   ]);
-  recipes = r;
-  scrolls = s;
-  materials = m;
+  if (rr.error) throw rr.error;
+  if (sr.error) throw sr.error;
+  if (mr.error) throw mr.error;
+  recipes = rr.data;
+  scrolls = sr.data;
+  materials = mr.data.map(m => m.name);
   buildIndexes();
 }
 
@@ -296,6 +303,475 @@ function setupAutocomplete() {
   fmList.innerHTML = materialNames.map(n => `<option value="${n}">`).join("");
 }
 
+// ---------- 편집: 공용 헬퍼 ----------
+
+const DEFAULT_SCROLL_TYPES = ["채집", "채광", "제작", "요리"];
+
+function recipeExists(name) {
+  return name in byName;
+}
+
+function showMsg(el, text, kind) {
+  el.textContent = text;
+  el.className = "result" + (kind ? ` ${kind}` : "");
+}
+
+function friendlyError(error) {
+  if (error.code === "23505") return "이미 존재하는 이름입니다.";
+  if (error.code === "42501") return "권한이 없습니다. 로그인 상태를 확인해주세요.";
+  return error.message || String(error);
+}
+
+async function refreshAfterDataChange() {
+  await loadData();
+  setupAutocomplete();
+  refreshEditDatalists();
+  renderList();
+  document.getElementById("status").textContent =
+    `제작법 ${recipes.length} · 스크롤 ${scrolls.length} · 원재료 ${materials.length}`;
+  window.dispatchEvent(new Event("makingdb:datachanged"));
+}
+
+function refreshEditDatalists() {
+  const subs = [...new Set(recipes.map(r => r.sub_category).filter(Boolean))];
+  document.getElementById("sub-datalist").innerHTML = subs.map(s => `<option value="${escapeAttr(s)}">`).join("");
+
+  const scrollTypes = [...new Set([...DEFAULT_SCROLL_TYPES, ...scrolls.map(s => s.scroll_type)])];
+  document.getElementById("scroll-type-datalist").innerHTML =
+    scrollTypes.map(t => `<option value="${escapeAttr(t)}">`).join("");
+
+  const towns = [...new Set(scrolls.map(s => s.town).filter(Boolean))];
+  document.getElementById("town-datalist").innerHTML = towns.map(t => `<option value="${escapeAttr(t)}">`).join("");
+
+  const allItems = [...new Set([...recipes.map(r => r.name), ...materials])];
+  document.getElementById("all-item-datalist").innerHTML =
+    allItems.map(n => `<option value="${escapeAttr(n)}">`).join("");
+}
+
+function escapeAttr(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// ---------- 편집: 재료 행 UI ----------
+
+function addMaterialRow(container, name = "", qty = 1) {
+  const row = document.createElement("div");
+  row.className = "material-row";
+  row.innerHTML = `
+    <input type="text" class="mat-name" list="all-item-datalist" placeholder="재료 이름" value="${escapeAttr(name)}">
+    <input type="number" class="mat-qty" min="1" value="${qty}">
+    <button type="button" class="mat-remove">삭제</button>
+  `;
+  row.querySelector(".mat-remove").addEventListener("click", () => row.remove());
+  container.appendChild(row);
+}
+
+function readMaterialRows(container) {
+  const rows = [...container.querySelectorAll(".material-row")];
+  const result = [];
+  for (const row of rows) {
+    const name = row.querySelector(".mat-name").value.trim();
+    const qty = parseInt(row.querySelector(".mat-qty").value, 10);
+    if (!name || !qty || qty < 1) continue;
+    result.push({ name, qty });
+  }
+  return result;
+}
+
+// 새로운 원재료 이름이 섞여 있으면 사용자 확인 후 등록할 이름 목록을 반환.
+// 반환값: 등록할 이름 배열(없으면 빈 배열), 사용자가 취소하면 null.
+function confirmNewMaterials(materialRows) {
+  const unknown = [...new Set(
+    materialRows.map(m => m.name).filter(n => !(n in byName) && !materials.includes(n))
+  )];
+  if (unknown.length === 0) return [];
+  const ok = confirm(
+    `다음 재료는 처음 보는 이름입니다. 새 원재료로 등록할까요?\n\n${unknown.join(", ")}`
+  );
+  return ok ? unknown : null;
+}
+
+// ---------- 로그인 ----------
+
+let currentSession = null;
+
+function updateAuthUI(session) {
+  currentSession = session;
+  const loggedOut = document.getElementById("auth-loggedout");
+  const loggedIn = document.getElementById("auth-loggedin");
+  const editBody = document.getElementById("edit-body");
+
+  if (session) {
+    loggedOut.classList.add("hidden");
+    loggedIn.classList.remove("hidden");
+    editBody.classList.remove("hidden");
+    document.getElementById("auth-user").textContent = `로그인됨: ${session.user.email}`;
+  } else {
+    loggedOut.classList.remove("hidden");
+    loggedIn.classList.add("hidden");
+    editBody.classList.add("hidden");
+  }
+}
+
+function setupAuth() {
+  document.getElementById("auth-login-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("auth-msg");
+    const email = document.getElementById("auth-email").value.trim();
+    const password = document.getElementById("auth-password").value;
+    if (!email || !password) { showMsg(msg, "이메일과 비밀번호를 입력해주세요.", "error"); return; }
+
+    showMsg(msg, "로그인 중...", "");
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      showMsg(msg, error.message, "error");
+      return;
+    }
+    document.getElementById("auth-password").value = "";
+    showMsg(msg, "", "");
+  });
+
+  document.getElementById("auth-logout-btn").addEventListener("click", async () => {
+    await supabaseClient.auth.signOut();
+  });
+
+  supabaseClient.auth.onAuthStateChange((_event, session) => updateAuthUI(session));
+}
+
+// ---------- 편집 탭 전환 ----------
+
+function setupEditTabs() {
+  document.querySelectorAll(".edit-tab-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".edit-tab-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".edit-panel").forEach(p => p.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(btn.dataset.edit).classList.add("active");
+    });
+  });
+}
+
+// ---------- 제작법 추가 ----------
+
+function setupRecipeAdd() {
+  const materialsBox = document.getElementById("ra-materials");
+  addMaterialRow(materialsBox);
+  document.getElementById("ra-add-material-btn").addEventListener("click", () => addMaterialRow(materialsBox));
+
+  document.getElementById("ra-save-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("ra-msg");
+    const major = document.getElementById("ra-major").value;
+    const sub = document.getElementById("ra-sub").value.trim();
+    const name = document.getElementById("ra-name").value.trim();
+    const output = parseInt(document.getElementById("ra-output").value, 10) || 1;
+    const materialRows = readMaterialRows(materialsBox);
+
+    if (!name) { showMsg(msg, "완제품 이름을 입력해주세요.", "error"); return; }
+    if (recipeExists(name)) { showMsg(msg, `'${name}'은(는) 이미 등록되어 있습니다.`, "error"); return; }
+    if (materialRows.length === 0) { showMsg(msg, "재료를 1개 이상 입력해주세요.", "error"); return; }
+    const newMaterials = confirmNewMaterials(materialRows);
+    if (newMaterials === null) { showMsg(msg, "취소했습니다.", ""); return; }
+
+    showMsg(msg, "저장 중...", "");
+    try {
+      if (newMaterials.length) {
+        const { error } = await supabaseClient.from("materials").insert(newMaterials.map(n => ({ name: n })));
+        if (error) throw error;
+      }
+      const { error } = await supabaseClient.from("recipes").insert({
+        major_category: major, sub_category: sub, name, output_qty: output, materials: materialRows,
+      });
+      if (error) throw error;
+
+      showMsg(msg, `'${name}' 등록 완료.`, "success");
+      document.getElementById("ra-name").value = "";
+      document.getElementById("ra-sub").value = "";
+      document.getElementById("ra-output").value = "1";
+      materialsBox.innerHTML = "";
+      addMaterialRow(materialsBox);
+      await refreshAfterDataChange();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+}
+
+// ---------- 제작법 수정/삭제 ----------
+
+let rmCurrentRecipe = null;
+
+function setupRecipeManage() {
+  const materialsBox = document.getElementById("rm-materials");
+  document.getElementById("rm-add-material-btn").addEventListener("click", () => addMaterialRow(materialsBox));
+
+  document.getElementById("rm-load-btn").addEventListener("click", () => {
+    const msg = document.getElementById("rm-msg");
+    const name = document.getElementById("rm-select").value.trim();
+    const recipe = byName[name];
+    if (!recipe) {
+      showMsg(msg, `'${name}'을(를) 찾을 수 없습니다.`, "error");
+      document.getElementById("rm-form").classList.add("hidden");
+      return;
+    }
+    rmCurrentRecipe = recipe;
+    document.getElementById("rm-major").value = recipe.major_category;
+    document.getElementById("rm-sub").value = recipe.sub_category || "";
+    document.getElementById("rm-output").value = recipe.output_qty;
+    materialsBox.innerHTML = "";
+    recipe.materials.forEach(m => addMaterialRow(materialsBox, m.name, m.qty));
+    document.getElementById("rm-form").classList.remove("hidden");
+    showMsg(msg, "", "");
+  });
+
+  document.getElementById("rm-save-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("rm-msg");
+    if (!rmCurrentRecipe) return;
+    const materialRows = readMaterialRows(materialsBox);
+    if (materialRows.length === 0) { showMsg(msg, "재료를 1개 이상 입력해주세요.", "error"); return; }
+    const newMaterials = confirmNewMaterials(materialRows);
+    if (newMaterials === null) { showMsg(msg, "취소했습니다.", ""); return; }
+
+    showMsg(msg, "저장 중...", "");
+    try {
+      if (newMaterials.length) {
+        const { error } = await supabaseClient.from("materials").insert(newMaterials.map(n => ({ name: n })));
+        if (error) throw error;
+      }
+      const { error } = await supabaseClient.from("recipes").update({
+        major_category: document.getElementById("rm-major").value,
+        sub_category: document.getElementById("rm-sub").value.trim(),
+        output_qty: parseInt(document.getElementById("rm-output").value, 10) || 1,
+        materials: materialRows,
+      }).eq("id", rmCurrentRecipe.id);
+      if (error) throw error;
+
+      showMsg(msg, `'${rmCurrentRecipe.name}' 수정 완료.`, "success");
+      await refreshAfterDataChange();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+
+  document.getElementById("rm-delete-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("rm-msg");
+    if (!rmCurrentRecipe) return;
+    const users = byMaterial[rmCurrentRecipe.name] || [];
+    let warnText = "";
+    if (users.length) {
+      warnText = `\n경고: 이 항목을 재료로 쓰는 완제품이 있습니다 -> ${users.map(u => u.name).join(", ")}`;
+    }
+    if (!confirm(`'${rmCurrentRecipe.name}'을(를) 정말 삭제하시겠습니까?${warnText}`)) return;
+
+    showMsg(msg, "삭제 중...", "");
+    try {
+      const { error } = await supabaseClient.from("recipes").delete().eq("id", rmCurrentRecipe.id);
+      if (error) throw error;
+
+      showMsg(msg, "삭제 완료.", "success");
+      document.getElementById("rm-form").classList.add("hidden");
+      document.getElementById("rm-select").value = "";
+      rmCurrentRecipe = null;
+      await refreshAfterDataChange();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+}
+
+// ---------- 스크롤 추가 ----------
+
+function validateScrollTarget(scrollType, targetName) {
+  const major = getMajorCategory(targetName);
+  if (scrollType === "채집" || scrollType === "채광") {
+    if (major !== null) {
+      return { ok: false, reason: `'${targetName}'은(는) 이미 제작법이 있는 항목(${major})이라 ${scrollType} 스크롤 대상이 될 수 없습니다.` };
+    }
+    return { ok: true };
+  }
+  if (scrollType === "제작" || scrollType === "요리") {
+    if (major !== "제작품") {
+      const reason = major === null ? "제작법이 없는 재료템" : `'${major}'로 분류된 항목`;
+      return { ok: false, reason: `'${targetName}'은(는) ${reason}이라 ${scrollType} 스크롤 대상이 될 수 없습니다.` };
+    }
+    return { ok: true };
+  }
+  return { ok: true };
+}
+
+function scrollExists(scrollType, targetName) {
+  return scrolls.some(s => s.scroll_type === scrollType && s.target_name === targetName);
+}
+
+function setupScrollAdd() {
+  document.getElementById("sa-save-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("sa-msg");
+    const scrollType = document.getElementById("sa-type").value.trim();
+    const town = document.getElementById("sa-town").value.trim();
+    const targetName = document.getElementById("sa-target").value.trim();
+    const qty = parseInt(document.getElementById("sa-qty").value, 10) || 1;
+
+    if (!scrollType) { showMsg(msg, "스크롤 종류를 입력해주세요.", "error"); return; }
+    if (!town) { showMsg(msg, "마을을 입력해주세요.", "error"); return; }
+    if (!targetName) { showMsg(msg, "대상 아이템 이름을 입력해주세요.", "error"); return; }
+
+    const { ok, reason } = validateScrollTarget(scrollType, targetName);
+    if (!ok) { showMsg(msg, reason, "error"); return; }
+
+    if (scrollExists(scrollType, targetName)) {
+      showMsg(msg, `'${scrollType} 스크롤: ${targetName}'은(는) 이미 등록되어 있습니다.`, "error");
+      return;
+    }
+
+    let registerMaterial = false;
+    if ((scrollType === "채집" || scrollType === "채광") && !materials.includes(targetName)) {
+      registerMaterial = confirm(`'${targetName}'을(를) 원재료 목록에도 등록해두시겠습니까?`);
+    }
+
+    showMsg(msg, "저장 중...", "");
+    try {
+      if (registerMaterial) {
+        const { error } = await supabaseClient.from("materials").insert({ name: targetName });
+        if (error) throw error;
+      }
+      const { error } = await supabaseClient.from("scrolls").insert({
+        scroll_type: scrollType, town, target_name: targetName, qty_per_scroll: qty,
+      });
+      if (error) throw error;
+
+      showMsg(msg, `'${scrollType} 스크롤: ${targetName}' (${town}) 등록 완료.`, "success");
+      document.getElementById("sa-target").value = "";
+      document.getElementById("sa-qty").value = "1";
+      await refreshAfterDataChange();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+}
+
+// ---------- 스크롤 수정/삭제 ----------
+
+function setupScrollManage() {
+  const select = document.getElementById("sm-select");
+
+  function refreshSelect() {
+    select.innerHTML = scrolls
+      .map((s, i) => `<option value="${i}">[${s.scroll_type}] ${s.target_name} (${s.town || "미상"})</option>`)
+      .join("");
+  }
+  refreshSelect();
+  window.addEventListener("makingdb:datachanged", refreshSelect);
+
+  document.getElementById("sm-load-btn").addEventListener("click", () => {
+    const msg = document.getElementById("sm-msg");
+    const scroll = scrolls[select.value];
+    if (!scroll) { showMsg(msg, "스크롤을 선택해주세요.", "error"); return; }
+    document.getElementById("sm-town").value = scroll.town || "";
+    document.getElementById("sm-qty").value = scroll.qty_per_scroll;
+    document.getElementById("sm-form").classList.remove("hidden");
+    showMsg(msg, "", "");
+  });
+
+  document.getElementById("sm-save-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("sm-msg");
+    const scroll = scrolls[select.value];
+    if (!scroll) return;
+
+    showMsg(msg, "저장 중...", "");
+    try {
+      const { error } = await supabaseClient.from("scrolls").update({
+        town: document.getElementById("sm-town").value.trim(),
+        qty_per_scroll: parseInt(document.getElementById("sm-qty").value, 10) || 1,
+      }).eq("id", scroll.id);
+      if (error) throw error;
+
+      showMsg(msg, "수정 완료.", "success");
+      await refreshAfterDataChange();
+      refreshSelect();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+
+  document.getElementById("sm-delete-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("sm-msg");
+    const scroll = scrolls[select.value];
+    if (!scroll) return;
+    if (!confirm(`[${scroll.scroll_type} 스크롤] ${scroll.target_name}을(를) 정말 삭제하시겠습니까?`)) return;
+
+    showMsg(msg, "삭제 중...", "");
+    try {
+      const { error } = await supabaseClient.from("scrolls").delete().eq("id", scroll.id);
+      if (error) throw error;
+
+      showMsg(msg, "삭제 완료.", "success");
+      document.getElementById("sm-form").classList.add("hidden");
+      await refreshAfterDataChange();
+      refreshSelect();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+}
+
+// ---------- 원재료 관리 ----------
+
+function setupMaterialManage() {
+  const list = document.getElementById("mm-list");
+
+  function renderMmList() {
+    list.innerHTML = materials.length
+      ? "<ul>" + materials.map(m =>
+          `<li>${m} <button type="button" class="mat-remove" data-name="${escapeAttr(m)}">삭제</button></li>`
+        ).join("") + "</ul>"
+      : "<p>없음</p>";
+
+    list.querySelectorAll(".mat-remove").forEach(btn => {
+      btn.addEventListener("click", async () => {
+        const name = btn.dataset.name;
+        const users = byMaterial[name] || [];
+        let warnText = "";
+        if (users.length) {
+          warnText = `\n경고: 이 항목을 재료로 쓰는 완제품이 있습니다 -> ${users.map(u => u.name).join(", ")}`;
+        }
+        if (!confirm(`'${name}'을(를) 정말 삭제하시겠습니까?${warnText}`)) return;
+
+        try {
+          const { error } = await supabaseClient.from("materials").delete().eq("name", name);
+          if (error) throw error;
+          await refreshAfterDataChange();
+        } catch (e) {
+          alert(friendlyError(e));
+        }
+      });
+    });
+  }
+
+  window.addEventListener("makingdb:datachanged", renderMmList);
+  renderMmList();
+
+  document.getElementById("mm-add-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("mm-msg");
+    const input = document.getElementById("mm-name");
+    const name = input.value.trim();
+    if (!name) { showMsg(msg, "이름을 입력해주세요.", "error"); return; }
+    if (materials.includes(name)) { showMsg(msg, `'${name}'은(는) 이미 등록되어 있습니다.`, "error"); return; }
+
+    showMsg(msg, "저장 중...", "");
+    try {
+      const { error } = await supabaseClient.from("materials").insert({ name });
+      if (error) throw error;
+      showMsg(msg, `'${name}' 등록 완료.`, "success");
+      input.value = "";
+      await refreshAfterDataChange();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+}
+
 // ---------- 초기화 ----------
 
 async function init() {
@@ -309,8 +785,19 @@ async function init() {
     setupScrollCalc();
     setupLists();
     setupAutocomplete();
+    setupAuth();
+    setupEditTabs();
+    setupRecipeAdd();
+    setupRecipeManage();
+    setupScrollAdd();
+    setupScrollManage();
+    setupMaterialManage();
+    refreshEditDatalists();
     renderList();
     status.textContent = `제작법 ${recipes.length} · 스크롤 ${scrolls.length} · 원재료 ${materials.length}`;
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    updateAuthUI(session);
   } catch (e) {
     status.textContent = `데이터 로드 실패: ${e.message}`;
   }

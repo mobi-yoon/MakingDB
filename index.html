@@ -9,7 +9,7 @@
 <body>
 <header>
   <h1>MakingDB</h1>
-  <p class="sub">제작법 · 스크롤 조회 (편집은 로컬 CLI에서)</p>
+  <p class="sub">제작법 · 스크롤 조회 및 편집</p>
 </header>
 
 <nav id="tabs">
@@ -18,6 +18,7 @@
   <button class="tab-btn" data-tab="breakdown">필요 재료 계산</button>
   <button class="tab-btn" data-tab="scroll-calc">스크롤 계산</button>
   <button class="tab-btn" data-tab="lists">전체 목록</button>
+  <button class="tab-btn" data-tab="edit">편집</button>
 </nav>
 
 <main>
@@ -62,12 +63,131 @@
     <input type="text" id="list-filter" placeholder="필터...">
     <div id="list-result" class="result"></div>
   </section>
+
+  <section id="edit" class="tab-panel">
+    <h2>편집</h2>
+
+    <div id="auth-box">
+      <div id="auth-loggedout">
+        <label>이메일 <input type="text" id="auth-email"></label>
+        <label>비밀번호 <input type="password" id="auth-password"></label>
+        <button id="auth-login-btn">로그인</button>
+        <div id="auth-msg" class="result"></div>
+      </div>
+      <div id="auth-loggedin" class="hidden">
+        <span id="auth-user"></span>
+        <button id="auth-logout-btn">로그아웃</button>
+      </div>
+    </div>
+
+    <div id="edit-body" class="hidden">
+      <div id="edit-tabs">
+        <button class="edit-tab-btn active" data-edit="edit-recipe-add">제작법 추가</button>
+        <button class="edit-tab-btn" data-edit="edit-recipe-manage">제작법 수정/삭제</button>
+        <button class="edit-tab-btn" data-edit="edit-scroll-add">스크롤 추가</button>
+        <button class="edit-tab-btn" data-edit="edit-scroll-manage">스크롤 수정/삭제</button>
+        <button class="edit-tab-btn" data-edit="edit-material-manage">원재료 관리</button>
+      </div>
+
+      <div id="edit-recipe-add" class="edit-panel active">
+        <h3>제작법 추가</h3>
+        <div class="field-group">
+          <label>대분류
+            <select id="ra-major">
+              <option value="가공품">가공품</option>
+              <option value="제작품">제작품</option>
+            </select>
+          </label>
+          <label>소분류 <input type="text" id="ra-sub" list="sub-datalist" placeholder="예: 무기 (없으면 비워둠)"></label>
+          <label>완제품 이름 <input type="text" id="ra-name"></label>
+          <label>산출 수량 <input type="number" id="ra-output" min="1" value="1"></label>
+        </div>
+        <h4>재료</h4>
+        <div id="ra-materials" class="materials-box"></div>
+        <button type="button" id="ra-add-material-btn">+ 재료 추가</button>
+        <div>
+          <button id="ra-save-btn">저장</button>
+        </div>
+        <div id="ra-msg" class="result"></div>
+      </div>
+
+      <div id="edit-recipe-manage" class="edit-panel">
+        <h3>제작법 수정/삭제</h3>
+        <label>완제품 선택 <input type="text" id="rm-select" list="bd-datalist" placeholder="완제품 이름 입력"></label>
+        <button type="button" id="rm-load-btn">불러오기</button>
+        <div id="rm-form" class="hidden">
+          <div class="field-group">
+            <label>대분류
+              <select id="rm-major">
+                <option value="가공품">가공품</option>
+                <option value="제작품">제작품</option>
+              </select>
+            </label>
+            <label>소분류 <input type="text" id="rm-sub" list="sub-datalist"></label>
+            <label>산출 수량 <input type="number" id="rm-output" min="1"></label>
+          </div>
+          <h4>재료</h4>
+          <div id="rm-materials" class="materials-box"></div>
+          <button type="button" id="rm-add-material-btn">+ 재료 추가</button>
+          <div>
+            <button id="rm-save-btn">수정 저장</button>
+            <button id="rm-delete-btn" class="danger">삭제</button>
+          </div>
+        </div>
+        <div id="rm-msg" class="result"></div>
+      </div>
+
+      <div id="edit-scroll-add" class="edit-panel">
+        <h3>스크롤 추가</h3>
+        <div class="field-group">
+          <label>스크롤 종류 <input type="text" id="sa-type" list="scroll-type-datalist" placeholder="채집/채광/제작/요리/새 이름"></label>
+          <label>마을 <input type="text" id="sa-town" list="town-datalist" placeholder="마을 이름"></label>
+          <label>대상 아이템 이름 <input type="text" id="sa-target" list="all-item-datalist"></label>
+          <label>스크롤 1장당 필요 수량 <input type="number" id="sa-qty" min="1" value="1"></label>
+        </div>
+        <button id="sa-save-btn">저장</button>
+        <div id="sa-msg" class="result"></div>
+      </div>
+
+      <div id="edit-scroll-manage" class="edit-panel">
+        <h3>스크롤 수정/삭제</h3>
+        <select id="sm-select"></select>
+        <button type="button" id="sm-load-btn">불러오기</button>
+        <div id="sm-form" class="hidden">
+          <div class="field-group">
+            <label>마을 <input type="text" id="sm-town" list="town-datalist"></label>
+            <label>스크롤 1장당 필요 수량 <input type="number" id="sm-qty" min="1"></label>
+          </div>
+          <div>
+            <button id="sm-save-btn">수정 저장</button>
+            <button id="sm-delete-btn" class="danger">삭제</button>
+          </div>
+        </div>
+        <div id="sm-msg" class="result"></div>
+      </div>
+
+      <div id="edit-material-manage" class="edit-panel">
+        <h3>원재료 관리</h3>
+        <label>새 원재료 이름 <input type="text" id="mm-name"></label>
+        <button id="mm-add-btn">추가</button>
+        <div id="mm-msg" class="result"></div>
+        <h4>등록된 원재료</h4>
+        <div id="mm-list" class="result"></div>
+      </div>
+    </div>
+
+    <datalist id="sub-datalist"></datalist>
+    <datalist id="scroll-type-datalist"></datalist>
+    <datalist id="town-datalist"></datalist>
+    <datalist id="all-item-datalist"></datalist>
+  </section>
 </main>
 
 <footer>
   <span id="status"></span>
 </footer>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
