@@ -284,6 +284,12 @@ function setupScrollCalc() {
 
 let currentList = "recipes";
 
+// 열 헤더의 드롭다운으로 고르는 필터값 (탭별로 유지)
+const listFilters = {
+  recipes: { major_category: "", sub_category: "" },
+  scrolls: { town: "", scroll_type: "" },
+};
+
 function setupLists() {
   document.querySelectorAll(".list-tab-btn").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -296,39 +302,92 @@ function setupLists() {
   document.getElementById("list-filter").addEventListener("input", renderList);
 }
 
+// 열 헤더 안에 넣는 필터용 드롭다운. 선택하면 해당 열 값과 정확히 일치하는 행만 남긴다.
+function headerFilterSelect(col, options, current) {
+  const opts =
+    `<option value="">전체</option>` +
+    options.map(o => `<option value="${escapeAttr(o)}"${o === current ? " selected" : ""}>${escapeAttr(o)}</option>`).join("");
+  return `<select class="th-filter" data-col="${col}">${opts}</select>`;
+}
+
+function bindHeaderFilters(container, filterState) {
+  container.querySelectorAll(".th-filter").forEach(sel => {
+    sel.addEventListener("change", () => {
+      filterState[sel.dataset.col] = sel.value;
+      renderList();
+    });
+  });
+}
+
 function renderList() {
-  const filter = document.getElementById("list-filter").value.trim().toLowerCase();
+  const search = document.getElementById("list-filter").value.trim().toLowerCase();
   const result = document.getElementById("list-result");
 
   if (currentList === "recipes") {
-    const items = recipes.filter(r => r.name.toLowerCase().includes(filter));
-    result.innerHTML = items.length
-      ? `<div class="table-wrap"><table class="data-table">
-          <thead><tr><th>대분류</th><th>소분류</th><th>이름 (산출)</th><th>재료</th></tr></thead>
-          <tbody>${items.map(r => {
-            const matText = r.materials.length
-              ? r.materials.map(m => `${m.name} x${m.qty}`).join(", ")
-              : "-";
-            return `<tr>
-                <td>${r.major_category}</td>
-                <td>${r.sub_category || "-"}</td>
-                <td>${r.name} (${r.output_qty}개)</td>
-                <td>${matText}</td>
-              </tr>`;
-          }).join("")}</tbody>
-        </table></div>`
-      : "<p>없음</p>";
+    const f = listFilters.recipes;
+    const majors = [...new Set(recipes.map(r => r.major_category))];
+    const subs = [...new Set(recipes.map(r => r.sub_category).filter(Boolean))];
+
+    const items = recipes.filter(r =>
+      r.name.toLowerCase().includes(search) &&
+      (!f.major_category || r.major_category === f.major_category) &&
+      (!f.sub_category || r.sub_category === f.sub_category)
+    );
+
+    const rowsHtml = items.length
+      ? items.map(r => {
+          const matText = r.materials.length ? r.materials.map(m => `${m.name} x${m.qty}`).join(", ") : "-";
+          return `<tr>
+              <td>${r.major_category}</td>
+              <td>${r.sub_category || "-"}</td>
+              <td>${r.name} (${r.output_qty}개)</td>
+              <td>${matText}</td>
+            </tr>`;
+        }).join("")
+      : `<tr><td colspan="4">없음</td></tr>`;
+
+    result.innerHTML = `<div class="table-wrap"><table class="data-table">
+        <thead><tr>
+          <th>대분류${headerFilterSelect("major_category", majors, f.major_category)}</th>
+          <th>소분류${headerFilterSelect("sub_category", subs, f.sub_category)}</th>
+          <th>이름 (산출)</th>
+          <th>재료</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table></div>`;
+    bindHeaderFilters(result, f);
   } else if (currentList === "scrolls") {
-    const items = scrolls.filter(s => s.target_name.toLowerCase().includes(filter));
-    result.innerHTML = items.length
-      ? items.map(s => `
-          <div class="card">
-            <h3>[${s.scroll_type} 스크롤] ${s.target_name}</h3>
-            <div class="tag">마을: ${s.town || "미상"} · 1장당 ${s.qty_per_scroll}개</div>
-          </div>`).join("")
-      : "<p>없음</p>";
+    const f = listFilters.scrolls;
+    const towns = [...new Set(scrolls.map(s => s.town).filter(Boolean))].sort();
+    const types = [...new Set(scrolls.map(s => s.scroll_type))];
+
+    const items = scrolls.filter(s =>
+      s.target_name.toLowerCase().includes(search) &&
+      (!f.town || s.town === f.town) &&
+      (!f.scroll_type || s.scroll_type === f.scroll_type)
+    );
+
+    const rowsHtml = items.length
+      ? items.map(s => `<tr>
+              <td>${s.town || "미상"}</td>
+              <td>${s.scroll_type}</td>
+              <td>${s.target_name}</td>
+              <td>${s.qty_per_scroll}개</td>
+            </tr>`).join("")
+      : `<tr><td colspan="4">없음</td></tr>`;
+
+    result.innerHTML = `<div class="table-wrap"><table class="data-table">
+        <thead><tr>
+          <th>마을${headerFilterSelect("town", towns, f.town)}</th>
+          <th>종류${headerFilterSelect("scroll_type", types, f.scroll_type)}</th>
+          <th>대상 아이템</th>
+          <th>1장당 수량</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table></div>`;
+    bindHeaderFilters(result, f);
   } else {
-    const items = materials.filter(m => m.toLowerCase().includes(filter));
+    const items = materials.filter(m => m.toLowerCase().includes(search));
     result.innerHTML = items.length
       ? "<ul>" + items.map(m => `<li>${m}</li>`).join("") + "</ul>"
       : "<p>없음</p>";

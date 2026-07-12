@@ -133,4 +133,12 @@ button.danger { background: #b91c1c; border-color: #b91c1c; }
   white-space: nowrap;
 }
 .data-table td:last-child { white-space: normal; }
-.data-table th { background: var(--bg-soft); }
+.data-table th { background: var(--bg-soft); white-space: nowrap; }
+.data-table th select.th-filter {
+  display: block;
+  margin: 0.25rem 0 0;
+  padding: 0.15rem;
+  width: 100%;
+  font-size: 0.75rem;
+  font-weight: normal;
+}
