@@ -711,8 +711,15 @@ function refreshEditDatalists() {
   document.getElementById("scroll-type-datalist").innerHTML =
     scrollTypes.map(t => `<option value="${escapeAttr(t)}">`).join("");
 
-  const towns = [...new Set(scrolls.map(s => s.town).filter(Boolean))];
+  const towns = [...new Set([
+    ...scrolls.map(s => s.town),
+    ...trades.map(t => t.town),
+    ...purchases.map(p => p.town),
+  ].filter(Boolean))];
   document.getElementById("town-datalist").innerHTML = towns.map(t => `<option value="${escapeAttr(t)}">`).join("");
+
+  const npcs = [...new Set([...trades.map(t => t.npc), ...purchases.map(p => p.npc)].filter(Boolean))];
+  document.getElementById("npc-datalist").innerHTML = npcs.map(n => `<option value="${escapeAttr(n)}">`).join("");
 
   const allItems = [...new Set([...recipes.map(r => r.name), ...materials])];
   document.getElementById("all-item-datalist").innerHTML =
@@ -1186,6 +1193,234 @@ function setupMaterialManage() {
   });
 }
 
+// ---------- 교환 추가 ----------
+
+function setupTradeAdd() {
+  document.getElementById("ta-save-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("ta-msg");
+    const town = document.getElementById("ta-town").value.trim();
+    const npc = document.getElementById("ta-npc").value.trim();
+    const itemName = document.getElementById("ta-item").value.trim();
+    const itemQty = parseInt(document.getElementById("ta-item-qty").value, 10) || 1;
+    const requiredName = document.getElementById("ta-required").value.trim();
+    const requiredQtyRaw = document.getElementById("ta-required-qty").value.trim();
+    const limitText = document.getElementById("ta-limit").value.trim();
+
+    if (!town) { showMsg(msg, "마을을 입력해주세요.", "error"); return; }
+    if (!npc) { showMsg(msg, "NPC를 입력해주세요.", "error"); return; }
+    if (!itemName) { showMsg(msg, "얻는 아이템 이름을 입력해주세요.", "error"); return; }
+
+    showMsg(msg, "저장 중...", "");
+    try {
+      const { error } = await supabaseClient.from("trades").insert({
+        town, npc, item_name: itemName, item_qty: itemQty,
+        required_name: requiredName || null,
+        required_qty: requiredQtyRaw ? parseInt(requiredQtyRaw, 10) : null,
+        limit_text: limitText || null,
+      });
+      if (error) throw error;
+
+      showMsg(msg, `'${itemName}' (${town} - ${npc}) 등록 완료.`, "success");
+      document.getElementById("ta-item").value = "";
+      document.getElementById("ta-item-qty").value = "1";
+      document.getElementById("ta-required").value = "";
+      document.getElementById("ta-required-qty").value = "";
+      document.getElementById("ta-limit").value = "";
+      await refreshAfterDataChange();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+}
+
+// ---------- 교환 수정/삭제 ----------
+
+function setupTradeManage() {
+  const select = document.getElementById("tm-select");
+
+  function refreshSelect() {
+    select.innerHTML = trades
+      .map((t, i) => `<option value="${i}">[${t.town}] ${t.npc} - ${t.item_name}</option>`)
+      .join("");
+  }
+  refreshSelect();
+  window.addEventListener("makingdb:datachanged", refreshSelect);
+
+  document.getElementById("tm-load-btn").addEventListener("click", () => {
+    const msg = document.getElementById("tm-msg");
+    const trade = trades[select.value];
+    if (!trade) { showMsg(msg, "교환을 선택해주세요.", "error"); return; }
+    document.getElementById("tm-town").value = trade.town || "";
+    document.getElementById("tm-npc").value = trade.npc || "";
+    document.getElementById("tm-item").value = trade.item_name || "";
+    document.getElementById("tm-item-qty").value = trade.item_qty ?? 1;
+    document.getElementById("tm-required").value = trade.required_name || "";
+    document.getElementById("tm-required-qty").value = trade.required_qty ?? "";
+    document.getElementById("tm-limit").value = trade.limit_text || "";
+    document.getElementById("tm-form").classList.remove("hidden");
+    showMsg(msg, "", "");
+  });
+
+  document.getElementById("tm-save-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("tm-msg");
+    const trade = trades[select.value];
+    if (!trade) return;
+    const requiredQtyRaw = document.getElementById("tm-required-qty").value.trim();
+
+    showMsg(msg, "저장 중...", "");
+    try {
+      const { error } = await supabaseClient.from("trades").update({
+        town: document.getElementById("tm-town").value.trim(),
+        npc: document.getElementById("tm-npc").value.trim(),
+        item_name: document.getElementById("tm-item").value.trim(),
+        item_qty: parseInt(document.getElementById("tm-item-qty").value, 10) || 1,
+        required_name: document.getElementById("tm-required").value.trim() || null,
+        required_qty: requiredQtyRaw ? parseInt(requiredQtyRaw, 10) : null,
+        limit_text: document.getElementById("tm-limit").value.trim() || null,
+      }).eq("id", trade.id);
+      if (error) throw error;
+
+      showMsg(msg, "수정 완료.", "success");
+      await refreshAfterDataChange();
+      refreshSelect();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+
+  document.getElementById("tm-delete-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("tm-msg");
+    const trade = trades[select.value];
+    if (!trade) return;
+    if (!confirm(`[${trade.town}] ${trade.npc} - ${trade.item_name}을(를) 정말 삭제하시겠습니까?`)) return;
+
+    showMsg(msg, "삭제 중...", "");
+    try {
+      const { error } = await supabaseClient.from("trades").delete().eq("id", trade.id);
+      if (error) throw error;
+
+      showMsg(msg, "삭제 완료.", "success");
+      document.getElementById("tm-form").classList.add("hidden");
+      await refreshAfterDataChange();
+      refreshSelect();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+}
+
+// ---------- 구매 추가 ----------
+
+function setupPurchaseAdd() {
+  document.getElementById("pa-save-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("pa-msg");
+    const town = document.getElementById("pa-town").value.trim();
+    const npc = document.getElementById("pa-npc").value.trim();
+    const itemName = document.getElementById("pa-item").value.trim();
+    const currency = document.getElementById("pa-currency").value.trim();
+    const amountRaw = document.getElementById("pa-amount").value.trim();
+    const limitText = document.getElementById("pa-limit").value.trim();
+
+    if (!town) { showMsg(msg, "마을을 입력해주세요.", "error"); return; }
+    if (!npc) { showMsg(msg, "NPC를 입력해주세요.", "error"); return; }
+    if (!itemName) { showMsg(msg, "아이템 이름을 입력해주세요.", "error"); return; }
+
+    showMsg(msg, "저장 중...", "");
+    try {
+      const { error } = await supabaseClient.from("purchases").insert({
+        town, npc, item_name: itemName,
+        price_currency: currency || null,
+        price_amount: amountRaw ? parseInt(amountRaw, 10) : null,
+        limit_text: limitText || null,
+      });
+      if (error) throw error;
+
+      showMsg(msg, `'${itemName}' (${town} - ${npc}) 등록 완료.`, "success");
+      document.getElementById("pa-item").value = "";
+      document.getElementById("pa-currency").value = "";
+      document.getElementById("pa-amount").value = "";
+      document.getElementById("pa-limit").value = "";
+      await refreshAfterDataChange();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+}
+
+// ---------- 구매 수정/삭제 ----------
+
+function setupPurchaseManage() {
+  const select = document.getElementById("pm-select");
+
+  function refreshSelect() {
+    select.innerHTML = purchases
+      .map((p, i) => `<option value="${i}">[${p.town}] ${p.npc} - ${p.item_name}</option>`)
+      .join("");
+  }
+  refreshSelect();
+  window.addEventListener("makingdb:datachanged", refreshSelect);
+
+  document.getElementById("pm-load-btn").addEventListener("click", () => {
+    const msg = document.getElementById("pm-msg");
+    const purchase = purchases[select.value];
+    if (!purchase) { showMsg(msg, "구매 항목을 선택해주세요.", "error"); return; }
+    document.getElementById("pm-town").value = purchase.town || "";
+    document.getElementById("pm-npc").value = purchase.npc || "";
+    document.getElementById("pm-item").value = purchase.item_name || "";
+    document.getElementById("pm-currency").value = purchase.price_currency || "";
+    document.getElementById("pm-amount").value = purchase.price_amount ?? "";
+    document.getElementById("pm-limit").value = purchase.limit_text || "";
+    document.getElementById("pm-form").classList.remove("hidden");
+    showMsg(msg, "", "");
+  });
+
+  document.getElementById("pm-save-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("pm-msg");
+    const purchase = purchases[select.value];
+    if (!purchase) return;
+    const amountRaw = document.getElementById("pm-amount").value.trim();
+
+    showMsg(msg, "저장 중...", "");
+    try {
+      const { error } = await supabaseClient.from("purchases").update({
+        town: document.getElementById("pm-town").value.trim(),
+        npc: document.getElementById("pm-npc").value.trim(),
+        item_name: document.getElementById("pm-item").value.trim(),
+        price_currency: document.getElementById("pm-currency").value.trim() || null,
+        price_amount: amountRaw ? parseInt(amountRaw, 10) : null,
+        limit_text: document.getElementById("pm-limit").value.trim() || null,
+      }).eq("id", purchase.id);
+      if (error) throw error;
+
+      showMsg(msg, "수정 완료.", "success");
+      await refreshAfterDataChange();
+      refreshSelect();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+
+  document.getElementById("pm-delete-btn").addEventListener("click", async () => {
+    const msg = document.getElementById("pm-msg");
+    const purchase = purchases[select.value];
+    if (!purchase) return;
+    if (!confirm(`[${purchase.town}] ${purchase.npc} - ${purchase.item_name}을(를) 정말 삭제하시겠습니까?`)) return;
+
+    showMsg(msg, "삭제 중...", "");
+    try {
+      const { error } = await supabaseClient.from("purchases").delete().eq("id", purchase.id);
+      if (error) throw error;
+
+      showMsg(msg, "삭제 완료.", "success");
+      document.getElementById("pm-form").classList.add("hidden");
+      await refreshAfterDataChange();
+      refreshSelect();
+    } catch (e) {
+      showMsg(msg, friendlyError(e), "error");
+    }
+  });
+}
+
 // ---------- 계정: 캐릭터 / 가방 / 보관함 ----------
 
 function setupItemTable({ inputId, qtyId, saveId, searchId, listId, table, extraFields, matchFields }) {
@@ -1400,6 +1635,10 @@ async function init() {
     setupScrollAdd();
     setupScrollManage();
     setupMaterialManage();
+    setupTradeAdd();
+    setupTradeManage();
+    setupPurchaseAdd();
+    setupPurchaseManage();
     setupAccountManage();
     refreshEditDatalists();
     refreshTradeSearchDatalists();

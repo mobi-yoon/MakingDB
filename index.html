@@ -160,6 +160,10 @@
         <button class="edit-tab-btn" data-edit="edit-scroll-add">스크롤 추가</button>
         <button class="edit-tab-btn" data-edit="edit-scroll-manage">스크롤 수정/삭제</button>
         <button class="edit-tab-btn" data-edit="edit-material-manage">원재료 관리</button>
+        <button class="edit-tab-btn" data-edit="edit-trade-add">교환 추가</button>
+        <button class="edit-tab-btn" data-edit="edit-trade-manage">교환 수정/삭제</button>
+        <button class="edit-tab-btn" data-edit="edit-purchase-add">구매 추가</button>
+        <button class="edit-tab-btn" data-edit="edit-purchase-manage">구매 수정/삭제</button>
       </div>
 
       <div id="edit-recipe-add" class="edit-panel active">
@@ -248,11 +252,84 @@
         <input type="text" id="mm-search" placeholder="원재료 검색...">
         <div id="mm-list" class="result"></div>
       </div>
+
+      <div id="edit-trade-add" class="edit-panel">
+        <h3>교환 추가</h3>
+        <div class="field-group">
+          <label>마을 <input type="text" id="ta-town" list="town-datalist"></label>
+          <label>NPC <input type="text" id="ta-npc" list="npc-datalist"></label>
+          <label>얻는 아이템 이름 <input type="text" id="ta-item" list="all-item-datalist"></label>
+          <label>얻는 수량 <input type="text" inputmode="numeric" pattern="[0-9]*" id="ta-item-qty" value="1"></label>
+          <label>필요 재료 이름 <input type="text" id="ta-required" list="all-item-datalist" placeholder="없으면 비워둠"></label>
+          <label>필요 수량 <input type="text" inputmode="numeric" pattern="[0-9]*" id="ta-required-qty" placeholder="없으면 비워둠"></label>
+          <label>제한 <input type="text" id="ta-limit" placeholder="예: 일일 1회 (없으면 비워둠)"></label>
+        </div>
+        <button id="ta-save-btn">저장</button>
+        <div id="ta-msg" class="result"></div>
+      </div>
+
+      <div id="edit-trade-manage" class="edit-panel">
+        <h3>교환 수정/삭제</h3>
+        <select id="tm-select"></select>
+        <button type="button" id="tm-load-btn">불러오기</button>
+        <div id="tm-form" class="hidden">
+          <div class="field-group">
+            <label>마을 <input type="text" id="tm-town" list="town-datalist"></label>
+            <label>NPC <input type="text" id="tm-npc" list="npc-datalist"></label>
+            <label>얻는 아이템 이름 <input type="text" id="tm-item" list="all-item-datalist"></label>
+            <label>얻는 수량 <input type="text" inputmode="numeric" pattern="[0-9]*" id="tm-item-qty"></label>
+            <label>필요 재료 이름 <input type="text" id="tm-required" list="all-item-datalist" placeholder="없으면 비워둠"></label>
+            <label>필요 수량 <input type="text" inputmode="numeric" pattern="[0-9]*" id="tm-required-qty" placeholder="없으면 비워둠"></label>
+            <label>제한 <input type="text" id="tm-limit" placeholder="없으면 비워둠"></label>
+          </div>
+          <div>
+            <button id="tm-save-btn">수정 저장</button>
+            <button id="tm-delete-btn" class="danger">삭제</button>
+          </div>
+        </div>
+        <div id="tm-msg" class="result"></div>
+      </div>
+
+      <div id="edit-purchase-add" class="edit-panel">
+        <h3>구매 추가</h3>
+        <div class="field-group">
+          <label>마을 <input type="text" id="pa-town" list="town-datalist"></label>
+          <label>NPC <input type="text" id="pa-npc" list="npc-datalist"></label>
+          <label>아이템 이름 <input type="text" id="pa-item" list="all-item-datalist"></label>
+          <label>화폐 종류 <input type="text" id="pa-currency" placeholder="예: 골드, 하트 토큰"></label>
+          <label>가격 <input type="text" inputmode="numeric" pattern="[0-9]*" id="pa-amount"></label>
+          <label>제한 <input type="text" id="pa-limit" placeholder="예: 일일 1회 (없으면 비워둠)"></label>
+        </div>
+        <button id="pa-save-btn">저장</button>
+        <div id="pa-msg" class="result"></div>
+      </div>
+
+      <div id="edit-purchase-manage" class="edit-panel">
+        <h3>구매 수정/삭제</h3>
+        <select id="pm-select"></select>
+        <button type="button" id="pm-load-btn">불러오기</button>
+        <div id="pm-form" class="hidden">
+          <div class="field-group">
+            <label>마을 <input type="text" id="pm-town" list="town-datalist"></label>
+            <label>NPC <input type="text" id="pm-npc" list="npc-datalist"></label>
+            <label>아이템 이름 <input type="text" id="pm-item" list="all-item-datalist"></label>
+            <label>화폐 종류 <input type="text" id="pm-currency"></label>
+            <label>가격 <input type="text" inputmode="numeric" pattern="[0-9]*" id="pm-amount"></label>
+            <label>제한 <input type="text" id="pm-limit" placeholder="없으면 비워둠"></label>
+          </div>
+          <div>
+            <button id="pm-save-btn">수정 저장</button>
+            <button id="pm-delete-btn" class="danger">삭제</button>
+          </div>
+        </div>
+        <div id="pm-msg" class="result"></div>
+      </div>
     </div>
 
     <datalist id="sub-datalist"></datalist>
     <datalist id="scroll-type-datalist"></datalist>
     <datalist id="town-datalist"></datalist>
+    <datalist id="npc-datalist"></datalist>
     <datalist id="all-item-datalist"></datalist>
   </section>
 </main>
