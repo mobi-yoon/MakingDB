@@ -778,6 +778,17 @@ function updateAuthUI(session) {
   const notAdmin = document.getElementById("edit-not-admin");
   const editLoggedOutMsg = document.getElementById("edit-loggedout-msg");
   const accountBody = document.getElementById("account-body");
+  const editTabBtn = document.querySelector('.tab-btn[data-tab="edit"]');
+
+  const isAdmin = !!session && session.user.id === ADMIN_UID;
+  editTabBtn.classList.toggle("hidden", !isAdmin);
+  if (!isAdmin && editTabBtn.classList.contains("active")) {
+    editTabBtn.classList.remove("active");
+    document.getElementById("edit").classList.remove("active");
+    const firstBtn = document.querySelector(".tab-btn");
+    firstBtn.classList.add("active");
+    document.getElementById(firstBtn.dataset.tab).classList.add("active");
+  }
 
   if (session) {
     loggedOut.classList.add("hidden");
@@ -786,7 +797,6 @@ function updateAuthUI(session) {
     editLoggedOutMsg.classList.add("hidden");
     accountBody.classList.remove("hidden");
 
-    const isAdmin = session.user.id === ADMIN_UID;
     editBody.classList.toggle("hidden", !isAdmin);
     notAdmin.classList.toggle("hidden", isAdmin);
   } else {
