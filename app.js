@@ -1075,12 +1075,21 @@ function setupScrollManage() {
 
 function setupMaterialManage() {
   const list = document.getElementById("mm-list");
+  const search = document.getElementById("mm-search");
 
   function renderMmList() {
-    list.innerHTML = materials.length
-      ? "<ul>" + materials.map(m =>
-          `<li>${m} <button type="button" class="mat-remove" data-name="${escapeAttr(m)}">삭제</button></li>`
-        ).join("") + "</ul>"
+    const query = search.value.trim().toLowerCase();
+    const items = materials.filter(m => m.toLowerCase().includes(query));
+
+    list.innerHTML = items.length
+      ? `<div class="table-wrap"><table class="data-table">
+          <thead><tr><th>삭제</th><th>이름</th></tr></thead>
+          <tbody>${items.map(m => `
+            <tr>
+              <td><button type="button" class="mat-remove" data-name="${escapeAttr(m)}">삭제</button></td>
+              <td>${m}</td>
+            </tr>`).join("")}</tbody>
+        </table></div>`
       : "<p>없음</p>";
 
     list.querySelectorAll(".mat-remove").forEach(btn => {
@@ -1105,6 +1114,7 @@ function setupMaterialManage() {
   }
 
   window.addEventListener("makingdb:datachanged", renderMmList);
+  search.addEventListener("input", renderMmList);
   renderMmList();
 
   async function addMaterial() {
