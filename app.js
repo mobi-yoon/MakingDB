@@ -1107,7 +1107,7 @@ function setupMaterialManage() {
   window.addEventListener("makingdb:datachanged", renderMmList);
   renderMmList();
 
-  document.getElementById("mm-add-btn").addEventListener("click", async () => {
+  async function addMaterial() {
     const msg = document.getElementById("mm-msg");
     const input = document.getElementById("mm-name");
     const name = input.value.trim();
@@ -1124,6 +1124,11 @@ function setupMaterialManage() {
     } catch (e) {
       showMsg(msg, friendlyError(e), "error");
     }
+  }
+
+  document.getElementById("mm-add-btn").addEventListener("click", addMaterial);
+  document.getElementById("mm-name").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") addMaterial();
   });
 }
 
