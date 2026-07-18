@@ -266,7 +266,7 @@ footer {
 button.danger { background: transparent; border-color: var(--danger); color: var(--danger); }
 button.danger:hover { background: var(--danger-soft); border-color: var(--danger); }
 
-.hidden { display: none; }
+.hidden { display: none !important; }
 
 .result.error { color: var(--danger); }
 .result.success { color: var(--success); }
