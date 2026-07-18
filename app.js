@@ -1509,8 +1509,19 @@ function setupItemTable({ inputId, qtyId, saveId, searchId, listId, table, extra
 }
 
 let characters = [];
-let selectedCharacterId = null;
+let selectedCharacterId = null;   // character-management target (add/rename/delete)
+let inventoryCharacterId = null;  // bag/storage browsing target (left-list selection)
+let currentInvSelection = null;   // { type: "bag"|"storage"|"acct", charId }
 let bagTable, storageTable, acctTable;
+
+function resetInventorySelection() {
+  currentInvSelection = null;
+  inventoryCharacterId = null;
+  document.getElementById("inv-bag-panel").classList.add("hidden");
+  document.getElementById("inv-storage-panel").classList.add("hidden");
+  document.getElementById("inv-acct-panel").classList.add("hidden");
+  document.getElementById("inv-empty-msg").classList.remove("hidden");
+}
 
 async function loadCharacters() {
   const { data, error } = await supabaseClient
@@ -1523,7 +1534,13 @@ async function loadCharacters() {
   if (!characters.some(c => c.id === selectedCharacterId)) {
     selectedCharacterId = characters.length ? characters[0].id : null;
   }
+  if (currentInvSelection && currentInvSelection.charId != null &&
+      !characters.some(c => c.id === currentInvSelection.charId)) {
+    resetInventorySelection();
+  }
   renderCharSelect();
+  renderInventoryNav();
+  updateInventoryDetailLabels();
 }
 
 function renderCharSelect() {
@@ -1532,9 +1549,63 @@ function renderCharSelect() {
     ? characters.map(c => `<option value="${c.id}">${c.name}</option>`).join("")
     : `<option value="">(캐릭터 없음)</option>`;
   select.value = selectedCharacterId || "";
-  document.getElementById("char-inventory-section").classList.toggle("hidden", !selectedCharacterId);
   document.getElementById("char-delete-btn").disabled = !selectedCharacterId;
   document.getElementById("char-rename-btn").disabled = !selectedCharacterId;
+}
+
+function buildInventoryNavItems() {
+  const items = [];
+  characters.forEach(c => {
+    items.push({ type: "bag", charId: c.id, label: `${c.name} · 가방` });
+    items.push({ type: "storage", charId: c.id, label: `${c.name} · 보관함` });
+  });
+  items.push({ type: "acct", charId: null, label: "공용 보관함" });
+  return items;
+}
+
+function renderInventoryNav() {
+  const nav = document.getElementById("inventory-nav");
+  const items = buildInventoryNavItems();
+
+  nav.innerHTML = items.map(it => {
+    const active = !!currentInvSelection && currentInvSelection.type === it.type && currentInvSelection.charId === it.charId;
+    return `<button type="button" class="inv-nav-item${active ? " active" : ""}" data-type="${it.type}" data-char-id="${it.charId ?? ""}">${escapeAttr(it.label)}</button>`;
+  }).join("");
+
+  nav.querySelectorAll(".inv-nav-item").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const type = btn.dataset.type;
+      const charId = btn.dataset.charId ? Number(btn.dataset.charId) : null;
+      selectInventoryItem(type, charId);
+    });
+  });
+}
+
+function updateInventoryDetailLabels() {
+  if (!currentInvSelection) return;
+  const char = characters.find(c => c.id === currentInvSelection.charId);
+  if (currentInvSelection.type === "bag") {
+    document.getElementById("inv-bag-char-name").textContent = char ? char.name : "";
+  } else if (currentInvSelection.type === "storage") {
+    document.getElementById("inv-storage-char-name").textContent = char ? char.name : "";
+  }
+}
+
+async function selectInventoryItem(type, charId) {
+  currentInvSelection = { type, charId };
+  inventoryCharacterId = type === "acct" ? null : charId;
+
+  document.getElementById("inv-empty-msg").classList.add("hidden");
+  document.getElementById("inv-bag-panel").classList.toggle("hidden", type !== "bag");
+  document.getElementById("inv-storage-panel").classList.toggle("hidden", type !== "storage");
+  document.getElementById("inv-acct-panel").classList.toggle("hidden", type !== "acct");
+
+  updateInventoryDetailLabels();
+  renderInventoryNav();
+
+  if (type === "bag") await bagTable.reload();
+  else if (type === "storage") await storageTable.reload();
+  else await acctTable.reload();
 }
 
 function setupAccountManage() {
@@ -1542,7 +1613,7 @@ function setupAccountManage() {
     inputId: "bag-item-input", qtyId: "bag-item-qty", saveId: "bag-item-save-btn",
     searchId: "bag-search", listId: "bag-list",
     table: "character_items",
-    extraFields: () => selectedCharacterId ? { character_id: selectedCharacterId, container: "bag" } : null,
+    extraFields: () => inventoryCharacterId ? { character_id: inventoryCharacterId, container: "bag" } : null,
     matchFields: ["character_id", "container", "item_name"],
   });
 
@@ -1550,7 +1621,7 @@ function setupAccountManage() {
     inputId: "storage-item-input", qtyId: "storage-item-qty", saveId: "storage-item-save-btn",
     searchId: "storage-search", listId: "storage-list",
     table: "character_items",
-    extraFields: () => selectedCharacterId ? { character_id: selectedCharacterId, container: "storage" } : null,
+    extraFields: () => inventoryCharacterId ? { character_id: inventoryCharacterId, container: "storage" } : null,
     matchFields: ["character_id", "container", "item_name"],
   });
 
@@ -1562,10 +1633,9 @@ function setupAccountManage() {
     matchFields: ["user_id", "item_name"],
   });
 
-  document.getElementById("char-select").addEventListener("change", async (e) => {
+  document.getElementById("char-select").addEventListener("change", (e) => {
     selectedCharacterId = e.target.value ? Number(e.target.value) : null;
     renderCharSelect();
-    await Promise.all([bagTable.reload(), storageTable.reload()]);
   });
 
   document.getElementById("char-add-btn").addEventListener("click", async () => {
@@ -1587,7 +1657,6 @@ function setupAccountManage() {
     showMsg(msg, "", "");
     selectedCharacterId = data.id;
     await loadCharacters();
-    await Promise.all([bagTable.reload(), storageTable.reload()]);
   });
 
   document.getElementById("char-rename-btn").addEventListener("click", async () => {
@@ -1621,21 +1690,24 @@ function setupAccountManage() {
 
     selectedCharacterId = null;
     await loadCharacters();
-    await Promise.all([bagTable.reload(), storageTable.reload()]);
   });
 }
 
 async function refreshAccountData() {
   if (!bagTable) return;
   await loadCharacters();
-  await Promise.all([bagTable.reload(), storageTable.reload(), acctTable.reload()]);
+  await acctTable.reload();
+  if (currentInvSelection?.type === "bag") await bagTable.reload();
+  else if (currentInvSelection?.type === "storage") await storageTable.reload();
 }
 
 function clearAccountData() {
   if (!bagTable) return;
   characters = [];
   selectedCharacterId = null;
+  resetInventorySelection();
   renderCharSelect();
+  renderInventoryNav();
   bagTable.clear();
   storageTable.clear();
   acctTable.clear();
