@@ -8,20 +8,21 @@
 </head>
 <body>
 <header>
-  <h1>생활도우미</h1>
-  <p class="sub">제작법 · 스크롤 조회 및 편집</p>
+  <div class="brand-row">
+    <h1>생활도우미</h1>
+    <p class="sub">제작법 · 스크롤 조회 및 편집</p>
+  </div>
+  <nav id="tabs">
+    <button class="tab-btn active" data-tab="find-product">완제품 검색</button>
+    <button class="tab-btn" data-tab="find-material">재료 역검색</button>
+    <button class="tab-btn" data-tab="breakdown">필요 재료 계산</button>
+    <button class="tab-btn" data-tab="scroll-calc">스크롤 계산</button>
+    <button class="tab-btn" data-tab="trade-search">교환/구매 검색</button>
+    <button class="tab-btn" data-tab="lists">전체 목록</button>
+    <button class="tab-btn" data-tab="account">계정</button>
+    <button class="tab-btn hidden" data-tab="edit">편집</button>
+  </nav>
 </header>
-
-<nav id="tabs">
-  <button class="tab-btn active" data-tab="find-product">완제품 검색</button>
-  <button class="tab-btn" data-tab="find-material">재료 역검색</button>
-  <button class="tab-btn" data-tab="breakdown">필요 재료 계산</button>
-  <button class="tab-btn" data-tab="scroll-calc">스크롤 계산</button>
-  <button class="tab-btn" data-tab="trade-search">교환/구매 검색</button>
-  <button class="tab-btn" data-tab="lists">전체 목록</button>
-  <button class="tab-btn" data-tab="account">계정</button>
-  <button class="tab-btn hidden" data-tab="edit">편집</button>
-</nav>
 
 <main>
   <section id="find-product" class="tab-panel active">
