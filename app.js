@@ -819,7 +819,7 @@ function updateAuthUI(session) {
 }
 
 function setupAuth() {
-  document.getElementById("auth-login-btn").addEventListener("click", async () => {
+  async function login() {
     const msg = document.getElementById("auth-msg");
     const email = document.getElementById("auth-email").value.trim();
     const password = document.getElementById("auth-password").value;
@@ -833,6 +833,11 @@ function setupAuth() {
     }
     document.getElementById("auth-password").value = "";
     showMsg(msg, "", "");
+  }
+
+  document.getElementById("auth-login-btn").addEventListener("click", login);
+  document.getElementById("auth-password").addEventListener("keydown", (e) => {
+    if (e.key === "Enter") login();
   });
 
   document.getElementById("auth-signup-btn").addEventListener("click", async () => {
